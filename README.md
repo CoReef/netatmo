@@ -1,2 +1,2 @@
 # netatmo
-Python client to access netatmo daya servers via REST
+Simple Python client to access netatmo data servers via REST (using the *requests* package).
