@@ -56,8 +56,10 @@ def main ():
     # Defining and parsing all the arguments used by this script
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", type=str, required=True, help="The file containing all the authentication data (JSON encoded")
+    parser.add_argument("--poll", type=int, required=False, help="The poll intervall between REST calls in seconds",default=600)
     args = parser.parse_args()
     auth_data_file = args.file
+    poll_intervall_in_secs = args.poll
 
     # Load authentication data as a dictionary
     auth_data = read_json_file(auth_data_file)
