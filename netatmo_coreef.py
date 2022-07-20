@@ -1,3 +1,16 @@
+# netatmo_coreef - by Peter Sturm (peter@0x002a.me)
+#
+# Access all Netatmo stations data of a users periodically and save each poll result as an individual
+# JSON-encoded file. Should survive service outages (but not yet tested enough). Returns a description
+# of the error or exception as stations data (content) with the top-level entry "success"==False.
+#
+# Required arguments:
+# --file <auth_file> = JSON-encoded file with all the required credentials (see example)
+#
+# Optional arguments:
+# --poll <seconds> = Time interval between two polls (default is 600 seconds)
+# --outdir <path> = Where to store all the JSON-encoded stations data; exists or will be created 
+
 import argparse
 import json
 import time
