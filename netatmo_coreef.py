@@ -2,6 +2,7 @@ import argparse
 import json
 import time
 import datetime
+import os.path
 import requests
 
 netatmo_auth_ep = "https://api.netatmo.com/oauth2/token"
@@ -47,19 +48,25 @@ def get_netatmo_stationsdata(access_token):
         return []
 
 
-def write_stationsdata_to_file(d):
+def write_stationsdata_to_file(dir,sd):
     dt = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    with open(f"{dt}_stationsdata.json",'w') as fd:
-        fd.write(json.dumps(d,indent=4))
+    p = os.path.join(dir,f"{dt}_stationsdata.json")
+    with open(p,'w') as fd:
+        fd.write(json.dumps(sd,indent=4))
 
 def main ():
     # Defining and parsing all the arguments used by this script
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", type=str, required=True, help="The file containing all the authentication data (JSON encoded")
     parser.add_argument("--poll", type=int, required=False, help="The poll intervall between REST calls in seconds",default=600)
+    parser.add_argument("--outdir", type=str, required=False, help="The directory to store stations data files",default=".")
     args = parser.parse_args()
     auth_data_file = args.file
     poll_intervall_in_secs = args.poll
+
+    data_dir = os.path.abspath(args.outdir)
+    if not os.path.isdir(data_dir):
+        os.makedirs(data_dir)
 
     # Load authentication data as a dictionary
     auth_data = read_json_file(auth_data_file)
@@ -71,7 +78,7 @@ def main ():
     while True:
         next_poll = time.time() + poll_intervall_in_secs
         stationsdata = get_netatmo_stationsdata(tokens['access_token'])
-        write_stationsdata_to_file(stationsdata)
+        write_stationsdata_to_file(data_dir,stationsdata)
         tokens['expires_in'] -= poll_intervall_in_secs
         if tokens['expires_in']<= poll_intervall_in_secs:
             tokens = refresh_netatmo_access_token(auth_data,tokens)
