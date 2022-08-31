@@ -18,9 +18,16 @@ import datetime
 import os.path
 import requests
 
+import crMQTT
+
 # Relevant URLs to access Netatmo REST API
 netatmo_auth_ep = "https://api.netatmo.com/oauth2/token"
 netatmo_getstationsdata_ep = "https://api.netatmo.com/api/getstationsdata"
+
+# Address of the MQTT server
+mqtt_address = '10.42.1.102'
+mqtt_port = 1884
+mqtt = crMQTT.crMQTT(mqtt_address,mqtt_port)
 
 # Reading the content of the given JSON encoded file; returns a dictionary
 def read_json_file(filename):
@@ -65,6 +72,22 @@ def write_stationsdata_to_file(dir,sd):
     with open(p,'w') as fd:
         fd.write(json.dumps(sd,indent=4))
 
+def send_moduledata_to_mqtt(home,module,dashboard):
+    global mqtt
+    tag = f'{module}/reading'.replace(" ", "")
+    message = json.dumps(dashboard)
+    mqtt.publish(tag,message)
+
+def send_all_stationsdata_to_mqtt(sd):
+    if not sd['success']:
+        return
+    devices = sd['content']['body']['devices']
+    for device in devices:
+        send_moduledata_to_mqtt(device['home_name'],device['module_name'],device['dashboard_data'])
+        for module in device['modules']:
+            send_moduledata_to_mqtt(device['home_name'],module['module_name'],module['dashboard_data'])
+
+
 def main ():
     # Defining and parsing all the arguments used by this script
     parser = argparse.ArgumentParser()
@@ -95,6 +118,7 @@ def main ():
         next_poll = time.time() + poll_intervall_in_secs
         result = get_netatmo_stationsdata(tokens['access_token'])
         write_stationsdata_to_file(data_dir,result)
+        send_all_stationsdata_to_mqtt(result)
         tokens['expires_in'] -= poll_intervall_in_secs
         if tokens['expires_in']<= poll_intervall_in_secs:
             result = refresh_netatmo_access_token(auth_data,tokens)

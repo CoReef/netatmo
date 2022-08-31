@@ -28,33 +28,23 @@ def find_path(p,d):
     keys = p.split('.')
     return find_path_step(keys,d)
 
-def recursive_flatten(l,fl):
-    for element in l:
-        if isinstance(element,list):
-            recursive_flatten(element,fl)
-        else:
-            fl.append(element)
+def reflect(d,v):
+    d += 1
+    if isinstance(v,dict):
+        for k in v.keys():
+            print(' '.rjust(d*2),end='')
+            print(f'Dict key<{k}>: value={reflect(d+1,v[k])}')
+    elif isinstance(v,list):
+        for l in v:
+            print(' '.rjust(d*2),end='')
+            print(f'List element <{reflect(d+1,l)}')
 
-def flatten(l):
-    result = []
-    recursive_flatten(l,result)
-    return result
-
-def print_dashboards(d):
-    for dashboard in d:
-        for k in dashboard.keys():
-            print(f"{k} = {dashboard[k]}")
-        print()
+    return f'{type(v)}'
 
 def main():
     sd = read_json_file("out/2022-08-30_17:16:40_stationsdata.json")
-    dashboards = find_path('content.body.devices.dashboard_data',sd)
-    dashboards.append(find_path('content.body.devices.modules.dashboard_data',sd))
-    print_dashboards(flatten(dashboards))
-    batteries = find_path('content.body.devices.modules.battery_percent',sd)
-    print(batteries)
+    reflect(0,sd)
 
 
 if __name__ == '__main__':
     main()
-      
