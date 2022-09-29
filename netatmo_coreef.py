@@ -5,7 +5,7 @@
 # of the error or exception as stations data (content) with the top-level entry "success"==False.
 #
 # Required arguments:
-# --file <auth_file> = JSON-encoded file with all the required credentials (see example)
+# --file <auth_file> = JSON-encoded token file (created by netatmo_oauth)
 #
 # Optional arguments:
 # --poll <seconds> = Time interval between two polls (default is 600 seconds)
@@ -52,12 +52,12 @@ def get_netatmo_access_token(auth_data):
     headers = { 'Content-Type':'application/x-www-form-urlencoded' }
     return rest_request(requests.post,netatmo_auth_ep,headers,body)
 
-def refresh_netatmo_access_token(auth_data,tokens):
+def refresh_netatmo_access_token(token):
     body = {
         'grant_type':'refresh_token',
-        'refresh_token':tokens['refresh_token'],
-        'client_id':auth_data['client_id'],
-        'client_secret':auth_data['client_secret']
+        'refresh_token':token['refresh_token'],
+        'client_id':token['client_id'],
+        'client_secret':token['client_secret']
     }
     headers = { 'Content-Type':'application/x-www-form-urlencoded' }
     return rest_request(requests.post,netatmo_auth_ep,headers,body)
@@ -87,15 +87,14 @@ def send_all_stationsdata_to_mqtt(sd):
         for module in device['modules']:
             send_moduledata_to_mqtt(device['home_name'],module['module_name'],module['dashboard_data'])
 
-
 def main ():
     # Defining and parsing all the arguments used by this script
     parser = argparse.ArgumentParser()
-    parser.add_argument("--file", type=str, required=True, help="The file containing all the authentication data (JSON encoded")
+    parser.add_argument("--file", type=str, required=True, help="The file containing the access and refresh token (JSON encoded")
     parser.add_argument("--poll", type=int, required=False, help="The poll intervall between REST calls in seconds",default=600)
     parser.add_argument("--outdir", type=str, required=False, help="The directory to store stations data files",default=".")
     args = parser.parse_args()
-    auth_data_file = args.file
+    token_file = args.file
     poll_intervall_in_secs = args.poll
 
     # Check for the output directory and create it if not
@@ -104,28 +103,27 @@ def main ():
         os.makedirs(data_dir)
 
     # Load authentication data as a dictionary
-    auth_data = read_json_file(auth_data_file)
+    token = read_json_file(token_file)
+    token['expires_in'] = 0 # Force refresh
 
-    # Get access and renew token
-    result = get_netatmo_access_token(auth_data)
-    if not result['success']:
-        print(f"Unable to get access token because of error <{result['content']}>\n")
-        return
-    tokens = result['content']
-    
     # Start the loop, poll the stations data and refresh token if needed
     while True:
         next_poll = time.time() + poll_intervall_in_secs
-        result = get_netatmo_stationsdata(tokens['access_token'])
-        write_stationsdata_to_file(data_dir,result)
-        send_all_stationsdata_to_mqtt(result)
-        tokens['expires_in'] -= poll_intervall_in_secs
-        if tokens['expires_in']<= poll_intervall_in_secs:
-            result = refresh_netatmo_access_token(auth_data,tokens)
+        token['expires_in'] -= poll_intervall_in_secs
+        if token['expires_in']<= 2*poll_intervall_in_secs:
+            result = refresh_netatmo_access_token(token)
+            print(json.dumps(result,indent=4))
             if not result['success']:
                 write_stationsdata_to_file(data_dir,result)
+                print('Token refresh failed')
+                token = read_json_file(token_file)
             else:
-                tokens = result['content']
+                t = result['content']
+                for k in t.keys():
+                    token[k] = t[k]
+        result = get_netatmo_stationsdata(token['access_token'])
+        write_stationsdata_to_file(data_dir,result)
+        send_all_stationsdata_to_mqtt(result)
         wait_time = next_poll-time.time()
         if int(wait_time)>0:
             time.sleep(wait_time)

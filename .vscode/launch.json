@@ -12,7 +12,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args" : [ "--file", "../keys/netatmo.json", "--poll", "10", "--outdir", "out"],
+            "args" : [ "--file", "../netatmo_token.json", "--poll", "10", "--outdir", "out"],
             "cwd" : "${workspaceFolder}"
         }
     ]
