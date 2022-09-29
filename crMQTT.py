@@ -11,8 +11,8 @@ class crMQTT:
         self.mqtt_server.on_connect = self.on_connect
         self.mqtt_server.on_message = self.on_message
         self.mqtt_server.connect(address,port,60)
-        self.mqtt_server.loop_start()
         self.callbacks = []
+        self.mqtt_server.loop_start()
 
     def on_connect(self,client, userdata, flags, rc):
         for cb in self.callbacks:
